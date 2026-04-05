@@ -1,3 +1,7 @@
+# Load .env variables automatically
+from dotenv import load_dotenv
+load_dotenv()
+import os
 """
 WhatsApp Vendor Passthrough Proxy
 Domain: botmaster.storenxt.in
@@ -13,7 +17,12 @@ from typing import Optional
 import logging
 import time
 
+
 # ─── Config ───────────────────────────────────────────────────────────────────
+
+import os
+# Optionally disable IP whitelist via environment variable
+DISABLE_IP_WHITELIST = os.getenv("DISABLE_IP_WHITELIST", "0").lower() in ("1", "true", "yes")
 
 VENDOR_BASE_URL = "https://api.botmastersender.com/api/v1/"
 
@@ -68,26 +77,21 @@ def get_client_ip(request: Request) -> str:
 class IPWhitelistMiddleware(BaseHTTPMiddleware):
     """
     Blocks all requests from IPs not in WHITELISTED_IPS.
-    Whitelisting is skipped entirely when WHITELISTED_IPS is empty or disabled via class attribute.
+    Whitelisting is skipped entirely when WHITELISTED_IPS is empty or DISABLE_IP_WHITELIST is set.
     The /health endpoint is always allowed through for uptime checks.
     """
 
     ALWAYS_ALLOWED_PATHS = {"/health"}
-    DISABLED = False  # Class-level toggle for disabling whitelist
-
-    @classmethod
-    def set_disabled(cls, value: bool):
-        cls.DISABLED = value
 
     async def dispatch(self, request: Request, call_next):
         # Skip check for health probe
         if request.url.path in self.ALWAYS_ALLOWED_PATHS:
             return await call_next(request)
 
-        # Skip check if whitelist is disabled via class or empty list
-        if self.DISABLED or not WHITELISTED_IPS:
-            if self.DISABLED:
-                logger.warning("IP whitelisting is DISABLED via class attribute — all IPs are allowed")
+        # Skip check if whitelist is disabled via env or empty list
+        if DISABLE_IP_WHITELIST or not WHITELISTED_IPS:
+            if DISABLE_IP_WHITELIST:
+                logger.warning("IP whitelisting is DISABLED via environment variable — all IPs are allowed")
             else:
                 logger.warning("IP whitelisting is DISABLED — all IPs are allowed")
             return await call_next(request)
@@ -175,12 +179,7 @@ async def forward_to_vendor(action: str, body: dict, original_headers: dict) -> 
 @app.get("/health")
 async def health(request: Request):
     client_ip = get_client_ip(request)
-    if IPWhitelistMiddleware.DISABLED:
-        ip_whitelisting_status = "disabled (class)"
-    elif WHITELISTED_IPS:
-        ip_whitelisting_status = "enabled"
-    else:
-        ip_whitelisting_status = "disabled"
+    ip_whitelisting_status = "disabled (env)" if DISABLE_IP_WHITELIST else ("enabled" if WHITELISTED_IPS else "disabled")
     return {
         "status": "ok",
         "proxy_target": VENDOR_BASE_URL,
@@ -195,12 +194,7 @@ async def health(request: Request):
 @app.get("/api/v1/whitelist")
 async def list_whitelist(request: Request):
     """View current whitelisted IPs. Accessible only from a whitelisted IP (enforced by middleware)."""
-    if IPWhitelistMiddleware.DISABLED:
-        ip_whitelisting_status = "disabled (class)"
-    elif WHITELISTED_IPS:
-        ip_whitelisting_status = "enabled"
-    else:
-        ip_whitelisting_status = "disabled"
+    ip_whitelisting_status = "disabled (env)" if DISABLE_IP_WHITELIST else ("enabled" if WHITELISTED_IPS else "disabled")
     return {
         "success": True,
         "ip_whitelisting": ip_whitelisting_status,
