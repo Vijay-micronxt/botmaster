@@ -83,7 +83,7 @@ class IPWhitelistMiddleware(BaseHTTPMiddleware):
     """
 
     ALWAYS_ALLOWED_PATHS = {"/health"}
-    DISABLED = os.environ.get("DISABLE_IP_WHITELIST", "0") == "1"
+    DISABLED = os.environ.get("DISABLE_IP_WHITELIST", "0").strip() == "1"
 
     @classmethod
     def set_disabled(cls, value: bool):
