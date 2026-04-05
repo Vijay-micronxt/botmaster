@@ -83,7 +83,6 @@ class IPWhitelistMiddleware(BaseHTTPMiddleware):
     """
 
     ALWAYS_ALLOWED_PATHS = {"/health"}
-    DISABLED = os.environ.get("DISABLE_IP_WHITELIST", "0").strip() == "1"
 
     @classmethod
     def set_disabled(cls, value: bool):
@@ -94,8 +93,10 @@ class IPWhitelistMiddleware(BaseHTTPMiddleware):
         if request.url.path in self.ALWAYS_ALLOWED_PATHS:
             return await call_next(request)
 
-        # Skip check if whitelist is disabled via class or empty list
-        if self.DISABLED or not WHITELISTED_IPS:
+        disabled = os.environ.get("DISABLE_IP_WHITELIST", "0").strip() == "1"
+
+        # Skip check if whitelist is disabled via env or empty list
+        if disabled or not WHITELISTED_IPS:
             if self.DISABLED:
                 logger.warning("IP whitelisting is DISABLED via class attribute — all IPs are allowed")
             else:
@@ -219,8 +220,9 @@ async def forward_to_vendor(action: str, body: dict) -> dict:
 @app.get("/health")
 async def health(request: Request):
     client_ip = get_client_ip(request)
-    if IPWhitelistMiddleware.DISABLED:
-        ip_whitelisting_status = "disabled (class)"
+    disabled = os.environ.get("DISABLE_IP_WHITELIST", "0").strip() == "1"
+    if disabled:
+        ip_whitelisting_status = "disabled (env)"
     elif WHITELISTED_IPS:
         ip_whitelisting_status = "enabled"
     else:
