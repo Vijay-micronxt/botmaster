@@ -97,10 +97,7 @@ class IPWhitelistMiddleware(BaseHTTPMiddleware):
 
         # Skip check if whitelist is disabled via env or empty list
         if disabled or not WHITELISTED_IPS:
-            if self.DISABLED:
-                logger.warning("IP whitelisting is DISABLED via class attribute — all IPs are allowed")
-            else:
-                logger.warning("IP whitelisting is DISABLED — all IPs are allowed")
+            logger.warning("IP whitelisting is DISABLED — all IPs are allowed")
             return await call_next(request)
 
         client_ip = get_client_ip(request)
