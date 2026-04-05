@@ -39,7 +39,7 @@ WHITELISTED_IPS: list[str] = [
     "127.0.0.1",        # localhost (for local dev/testing)
     "::1",              # localhost IPv6
     "223.187.125.215",  # added by request
-    # "103.21.244.10",  # example client server 1
+    "223.187.121.166",  # example client server 1
     # "103.21.244.11",  # example client server 2
     # "49.50.72.100",   # example office IP
 ]
